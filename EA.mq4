@@ -8,6 +8,22 @@
 #property version   "1.00"
 #property strict
 
+// Enum definition for MA types
+enum ENUM_MA_TYPES
+{
+   MA_SMA,              // Simple moving average
+   MA_EMA,              // Exponential moving average
+   MA_SMMA,            // Smoothed moving average
+   MA_LWMA,            // Linear weighted moving average
+   MA_DEMA,            // Double exponential moving average
+   MA_TEMA,            // Triple exponential moving average
+   MA_T3,              // T3 moving average
+   MA_JURIK,           // Jurik moving average
+   MA_HULL,            // Hull moving average
+   MA_DECEMA,          // DECEMA moving average
+   MA_SALT             // SALT indicator
+};
+
 // Trading Parameters
 extern double LotSize = 0.1;              // Trading lot size
 extern int StopLoss = 100;                // Stop loss in pips
@@ -44,7 +60,7 @@ extern int TDI_TradeSignal_Mode = MODE_SMA; // TDI Trade Signal Mode (0:SMA, 1:E
 // xpMA1 Parameters
 extern string xpMA1_Label = "==== xpMA1 Settings ====";  // xpMA1 Settings
 extern int xpMA1_Period = 34;             // xpMA1 Period
-extern int xpMA1_MA_Type = 1;             // xpMA1 MA Type (0:SMA, 1:EMA, 2:SMMA, 3:LWMA)
+extern ENUM_MA_TYPES xpMA1_MA_Type = MA_EMA;  // xpMA1 MA Type
 extern int xpMA1_Price = PRICE_CLOSE;     // xpMA1 Applied Price
 extern double xpMA1_T3_Factor = 0.8;      // xpMA1 T3 Volume Factor
 extern double xpMA1_JMA_Phase = 0;        // xpMA1 JMA Phase
@@ -53,7 +69,7 @@ extern int xpMA1_Step_Period = 4;         // xpMA1 Step Period
 // xpMA2 Parameters
 extern string xpMA2_Label = "==== xpMA2 Settings ====";  // xpMA2 Settings
 extern int xpMA2_Period = 34;             // xpMA2 Period
-extern int xpMA2_MA_Type = 1;             // xpMA2 MA Type (0:SMA, 1:EMA, 2:SMMA, 3:LWMA)
+extern ENUM_MA_TYPES xpMA2_MA_Type = MA_EMA;  // xpMA2 MA Type
 extern int xpMA2_Price = PRICE_CLOSE;     // xpMA2 Applied Price
 extern double xpMA2_T3_Factor = 0.8;      // xpMA2 T3 Volume Factor
 extern double xpMA2_JMA_Phase = 0;        // xpMA2 JMA Phase
@@ -62,7 +78,7 @@ extern int xpMA2_Step_Period = 4;         // xpMA2 Step Period
 // xpMA3 Parameters
 extern string xpMA3_Label = "==== xpMA3 Settings ====";  // xpMA3 Settings
 extern int xpMA3_Period = 34;             // xpMA3 Period
-extern int xpMA3_MA_Type = 1;             // xpMA3 MA Type (0:SMA, 1:EMA, 2:SMMA, 3:LWMA)
+extern ENUM_MA_TYPES xpMA3_MA_Type = MA_EMA;  // xpMA3 MA Type
 extern int xpMA3_Price = PRICE_CLOSE;     // xpMA3 Applied Price
 extern double xpMA3_T3_Factor = 0.8;      // xpMA3 T3 Volume Factor
 extern double xpMA3_JMA_Phase = 0;        // xpMA3 JMA Phase
