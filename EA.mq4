@@ -33,13 +33,13 @@ extern bool MACD2_EmailON = false;        // MACD2 Email Alert
 
 // TDI Parameters
 extern string TDI_Label = "==== TDI Settings ====";      // TDI Settings
-extern int TDI_RSI_Period = 13;           // TDI RSI Period
+extern int TDI_RSI_Period = 50;           // TDI RSI Period
 extern int TDI_RSI_Price = PRICE_CLOSE;   // TDI RSI Price
 extern int TDI_Volatility_Band = 34;      // TDI Volatility Band
 extern int TDI_RSISignal_Period = 2;      // TDI RSI Signal Period
-extern int TDI_RSISignal_Mode = MODE_SMA; // TDI RSI Signal Mode
-extern int TDI_TradeSignal_Period = 7;    // TDI Trade Signal Period
-extern int TDI_TradeSignal_Mode = MODE_SMA; // TDI Trade Signal Mode
+extern int TDI_RSISignal_Mode = MODE_SMA;   // TDI RSI Signal Mode (0:SMA, 1:EMA, 2:SMMA, 3:LWMA)
+extern int TDI_TradeSignal_Period = 50;   // TDI Trade Signal Period
+extern int TDI_TradeSignal_Mode = MODE_SMA; // TDI Trade Signal Mode (0:SMA, 1:EMA, 2:SMMA, 3:LWMA)
 
 // xpMA1 Parameters
 extern string xpMA1_Label = "==== xpMA1 Settings ====";  // xpMA1 Settings
