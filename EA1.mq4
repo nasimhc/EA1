@@ -84,6 +84,14 @@ extern double xpMA3_T3_Factor = 0.8;      // xpMA3 T3 Volume Factor
 extern double xpMA3_JMA_Phase = 0;        // xpMA3 JMA Phase
 extern int xpMA3_Step_Period = 4;         // xpMA3 Step Period
 
+// Add new risk management parameters
+extern int MaxSpread = 3;                 // Maximum allowed spread (points)
+extern int MaxSlippage = 3;               // Maximum allowed slippage (points)
+extern int MagicNumber = 123456;          // Unique EA identifier
+extern bool EnableTrailingStop = true;    // Enable trailing stop
+extern int TrailingStopDistance = 50;     // Trailing stop distance (pips)
+extern int BreakEvenAt = 50;              // Activate breakeven at (pips profit)
+
 // Global Variables
 int ticket = 0;
 bool isNewBar = false;
@@ -94,46 +102,50 @@ datetime lastBarTime = 0;
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   // Check for testing environment
+   if(IsTesting() || IsOptimization()) 
+       MagicNumber = 0; // Disable magic number in testing
+       
+   // Check spread and market conditions
+   if(MarketInfo(Symbol(), MODE_SPREAD) > MaxSpread) {
+       Print("Spread too wide. EA not initialized.");
+       return(INIT_FAILED);
+   }
+   
    // Check if all required indicators are present by trying to get their handles
-   double dummy = iCustom(NULL, 0, "TDI", TDI_RSI_Period, TDI_RSI_Price, TDI_Volatility_Band,
+   if(iCustom(NULL, 0, "TDI", TDI_RSI_Period, TDI_RSI_Price, TDI_Volatility_Band,
                         TDI_RSISignal_Period, TDI_RSISignal_Mode, TDI_TradeSignal_Period,
-                        TDI_TradeSignal_Mode, 0, 0);
-   if(GetLastError() == 4072) {
+                        TDI_TradeSignal_Mode, 0, 0) == -1) {
       Print("Error: TDI indicator not found!");
       return(INIT_FAILED);
    }
    
-   dummy = iCustom(NULL, 0, "MACD1", MACD1_FastEMA, MACD1_SlowEMA, MACD1_SignalSMA,
-                  MACD1_SoundON, MACD1_EmailON, 0, 0);
-   if(GetLastError() == 4072) {
+   if(iCustom(NULL, 0, "MACD1", MACD1_FastEMA, MACD1_SlowEMA, MACD1_SignalSMA,
+                  MACD1_SoundON, MACD1_EmailON, 0, 0) == -1) {
       Print("Error: MACD1 indicator not found!");
       return(INIT_FAILED);
    }
    
-   dummy = iCustom(NULL, 0, "MACD2", MACD2_FastEMA, MACD2_SlowEMA, MACD2_SignalSMA,
-                  MACD2_SoundON, MACD2_EmailON, 0, 0);
-   if(GetLastError() == 4072) {
+   if(iCustom(NULL, 0, "MACD2", MACD2_FastEMA, MACD2_SlowEMA, MACD2_SignalSMA,
+                  MACD2_SoundON, MACD2_EmailON, 0, 0) == -1) {
       Print("Error: MACD2 indicator not found!");
       return(INIT_FAILED);
    }
    
-   dummy = iCustom(NULL, 0, "xpMA1", xpMA1_Period, xpMA1_MA_Type, xpMA1_Price,
-                  xpMA1_T3_Factor, xpMA1_JMA_Phase, xpMA1_Step_Period, 0, 0);
-   if(GetLastError() == 4072) {
+   if(iCustom(NULL, 0, "xpMA1", xpMA1_Period, xpMA1_MA_Type, xpMA1_Price,
+                  xpMA1_T3_Factor, xpMA1_JMA_Phase, xpMA1_Step_Period, 0, 0) == -1) {
       Print("Error: xpMA1 indicator not found!");
       return(INIT_FAILED);
    }
    
-   dummy = iCustom(NULL, 0, "xpMA2", xpMA2_Period, xpMA2_MA_Type, xpMA2_Price,
-                  xpMA2_T3_Factor, xpMA2_JMA_Phase, xpMA2_Step_Period, 0, 0);
-   if(GetLastError() == 4072) {
+   if(iCustom(NULL, 0, "xpMA2", xpMA2_Period, xpMA2_MA_Type, xpMA2_Price,
+                  xpMA2_T3_Factor, xpMA2_JMA_Phase, xpMA2_Step_Period, 0, 0) == -1) {
       Print("Error: xpMA2 indicator not found!");
       return(INIT_FAILED);
    }
    
-   dummy = iCustom(NULL, 0, "xpMA3", xpMA3_Period, xpMA3_MA_Type, xpMA3_Price,
-                  xpMA3_T3_Factor, xpMA3_JMA_Phase, xpMA3_Step_Period, 0, 0);
-   if(GetLastError() == 4072) {
+   if(iCustom(NULL, 0, "xpMA3", xpMA3_Period, xpMA3_MA_Type, xpMA3_Price,
+                  xpMA3_T3_Factor, xpMA3_JMA_Phase, xpMA3_Step_Period, 0, 0) == -1) {
       Print("Error: xpMA3 indicator not found!");
       return(INIT_FAILED);
    }
@@ -154,23 +166,28 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
+   // Check basic market conditions
+   if(IsTradeContextBusy() || IsStopped()) return;
+   
+   // Check spread
+   if(MarketInfo(Symbol(), MODE_SPREAD) > MaxSpread) return;
+
    // Check for new bar
-   if(isNewBar())
-   {
-      // Check if we have any open positions
-      if(!IsTradeOpen())
-      {
-         // Check buy conditions
-         if(CheckBuyConditions())
-         {
-            OpenBuy();
-         }
-         // Check sell conditions
-         else if(CheckSellConditions())
-         {
-            OpenSell();
-         }
-      }
+   if(isNewBar()) {
+       ManageOpenPositions(); // Add position management
+       
+       if(!IsTradeOpen()) {
+           // Check buy conditions
+           if(CheckBuyConditions())
+           {
+               OpenBuy();
+           }
+           // Check sell conditions
+           else if(CheckSellConditions())
+           {
+               OpenSell();
+           }
+       }
    }
 }
 
@@ -179,11 +196,11 @@ void OnTick()
 //+------------------------------------------------------------------+
 bool isNewBar()
 {
-   datetime currentBarTime = iTime(NULL, 0, 0);
-   if(currentBarTime != lastBarTime)
-   {
-      lastBarTime = currentBarTime;
-      return true;
+   static datetime lastBar;
+   datetime currentBar = Time[0];
+   if(lastBar != currentBar) {
+       lastBar = currentBar;
+       return true;
    }
    return false;
 }
@@ -193,15 +210,12 @@ bool isNewBar()
 //+------------------------------------------------------------------+
 bool IsTradeOpen()
 {
-   for(int i = OrdersTotal() - 1; i >= 0; i--)
-   {
-      if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
-      {
-         if(OrderSymbol() == Symbol() && OrderMagicNumber() == 123456)
-         {
-            return true;
-         }
-      }
+   for(int i = OrdersTotal()-1; i >= 0; i--) {
+       if(OrderSelect(i, SELECT_BY_POS) && 
+          OrderSymbol() == Symbol() && 
+          OrderMagicNumber() == MagicNumber) {
+           return true;
+       }
    }
    return false;
 }
@@ -236,7 +250,7 @@ bool CheckBuyConditions()
                                xpMA3_T3_Factor, xpMA3_JMA_Phase, xpMA3_Step_Period, 3, 0);
    bool priceCondition = (Close[0] > xpma3 && xpma3Signal == 1);
    
-   // 4. MACD Conditions: Both MACD1 and MACD2 blue line above red line
+   // 4. MACD Conditions: Either MACD1 or MACD2 blue line above red line
    double macd1Main = iCustom(NULL, 0, "MACD1", MACD1_FastEMA, MACD1_SlowEMA, MACD1_SignalSMA,
                             MACD1_SoundON, MACD1_EmailON, 0, 0);
    double macd1Signal = iCustom(NULL, 0, "MACD1", MACD1_FastEMA, MACD1_SlowEMA, MACD1_SignalSMA,
@@ -245,7 +259,7 @@ bool CheckBuyConditions()
                             MACD2_SoundON, MACD2_EmailON, 0, 0);
    double macd2Signal = iCustom(NULL, 0, "MACD2", MACD2_FastEMA, MACD2_SlowEMA, MACD2_SignalSMA,
                                MACD2_SoundON, MACD2_EmailON, 1, 0);
-   bool macdCondition = (macd1Main > macd1Signal && macd2Main > macd2Signal);
+   bool macdCondition = (macd1Main > macd1Signal || macd2Main > macd2Signal);
    
    return(tdiCondition && xpma2Condition && priceCondition && macdCondition);
 }
@@ -280,7 +294,7 @@ bool CheckSellConditions()
                                xpMA3_T3_Factor, xpMA3_JMA_Phase, xpMA3_Step_Period, 3, 0);
    bool priceCondition = (Close[0] < xpma3 && xpma3Signal == -1);
    
-   // 4. MACD Conditions: Both MACD1 and MACD2 blue line below red line
+   // 4. MACD Conditions: Either MACD1 or MACD2 blue line below red line
    double macd1Main = iCustom(NULL, 0, "MACD1", MACD1_FastEMA, MACD1_SlowEMA, MACD1_SignalSMA,
                             MACD1_SoundON, MACD1_EmailON, 0, 0);
    double macd1Signal = iCustom(NULL, 0, "MACD1", MACD1_FastEMA, MACD1_SlowEMA, MACD1_SignalSMA,
@@ -289,7 +303,7 @@ bool CheckSellConditions()
                             MACD2_SoundON, MACD2_EmailON, 0, 0);
    double macd2Signal = iCustom(NULL, 0, "MACD2", MACD2_FastEMA, MACD2_SlowEMA, MACD2_SignalSMA,
                                MACD2_SoundON, MACD2_EmailON, 1, 0);
-   bool macdCondition = (macd1Main < macd1Signal && macd2Main < macd2Signal);
+   bool macdCondition = (macd1Main < macd1Signal || macd2Main < macd2Signal);
    
    return(tdiCondition && xpma2Condition && priceCondition && macdCondition);
 }
@@ -299,11 +313,23 @@ bool CheckSellConditions()
 //+------------------------------------------------------------------+
 void OpenBuy()
 {
-   double lots = CalculateLotSize();
-   double sl = (StopLoss > 0) ? NormalizeDouble(Ask - StopLoss * Point, Digits) : 0;
-   double tp = (TakeProfit > 0) ? NormalizeDouble(Ask + TakeProfit * Point, Digits) : 0;
+   double point = MarketInfo(Symbol(), MODE_POINT);
+   int digits = (int)MarketInfo(Symbol(), MODE_DIGITS);
    
-   ticket = OrderSend(Symbol(), OP_BUY, lots, Ask, 3, sl, tp, "EA Buy Order", 123456, 0, clrGreen);
+   // Convert pips to points
+   double slPoints = StopLoss * (point * 10); // For 5-digit brokers
+   double tpPoints = TakeProfit * (point * 10);
+   
+   double sl = (StopLoss > 0) ? NormalizeDouble(Ask - slPoints, digits) : 0;
+   double tp = (TakeProfit > 0) ? NormalizeDouble(Ask + tpPoints, digits) : 0;
+   
+   for(int attempt=0; attempt<5; attempt++) {
+       ticket = OrderSend(Symbol(), OP_BUY, LotSize, Ask, MaxSlippage, sl, tp, 
+                         "EA Buy Order", MagicNumber, 0, clrGreen);
+       if(ticket > 0) break;
+       Sleep(500);
+       RefreshRates();
+   }
    
    if(ticket < 0)
    {
@@ -349,4 +375,44 @@ double CalculateLotSize()
    if(lots > maxLot) lots = maxLot;
    
    return lots;
+}
+
+//+------------------------------------------------------------------+
+//| Add trailing stop and breakeven logic                              |
+//+------------------------------------------------------------------+
+void ManageOpenPositions()
+{
+   for(int i = OrdersTotal()-1; i >= 0; i--) {
+       if(OrderSelect(i, SELECT_BY_POS) && 
+          OrderSymbol() == Symbol() && 
+          OrderMagicNumber() == MagicNumber) {
+           
+           if(EnableTrailingStop) {
+               double newSl = 0;
+               double currentSl = OrderStopLoss();
+               if(OrderType() == OP_BUY) {
+                   newSl = High[0] - TrailingStopDistance * Point;
+                   if(newSl > currentSl || currentSl == 0)
+                       OrderModify(OrderTicket(), OrderOpenPrice(), newSl, OrderTakeProfit(), 0);
+               }
+               else if(OrderType() == OP_SELL) {
+                   newSl = Low[0] + TrailingStopDistance * Point;
+                   if(newSl < currentSl || currentSl == 0)
+                       OrderModify(OrderTicket(), OrderOpenPrice(), newSl, OrderTakeProfit(), 0);
+               }
+           }
+           
+           // Breakeven logic
+           if(BreakEvenAt > 0) {
+               double profitPoints = (OrderType() == OP_BUY) ? 
+                   (Bid - OrderOpenPrice())/Point : 
+                   (OrderOpenPrice() - Ask)/Point;
+                   
+               if(profitPoints >= BreakEvenAt && OrderStopLoss() == OrderOpenPrice()) {
+                   double newSl = OrderOpenPrice();
+                   OrderModify(OrderTicket(), OrderOpenPrice(), newSl, OrderTakeProfit(), 0);
+               }
+           }
+       }
+   }
 }
