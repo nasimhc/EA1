@@ -1,0 +1,11 @@
+Buy Conditions:
+1. If green line is above the red line in TDI.mq4 indicator
+2. xpma2 is above xpma1 and xpma2 color must be DodgerBlue
+3. price must be above xpma3 and xpma3 color must be DodgerBlue
+4. For both MACD1 and MACD2 blue line must be above red line
+
+Sell Conditions:
+1. If green line is below the red line in TDI.mq4 indicator
+2. xpma2 is below xpma1 and xpma2 color must be OrangeRed
+3. price must be below xpma3 and xpma3 color must be OrangeRed
+4. For both MACD1 and MACD2 blue line must be below red line
